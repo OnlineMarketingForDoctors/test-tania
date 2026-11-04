@@ -216,8 +216,10 @@
         <span>${esc(r.name)}<small>${esc(r.meta || 'Google review')}</small></span>
       </div>
     </article>`;
-  tickerTrack.innerHTML = REVIEWS.map(r => card(r, false)).join('') + REVIEWS.map(r => card(r, true)).join('');
-  tickerTrack.style.setProperty('--ticker-dur', `${REVIEWS.length * 9}s`);
+  const realReviews = REVIEWS.filter(r => !r.placeholder);
+  if (realReviews.length) $('[data-ticker]').hidden = false;
+  tickerTrack.innerHTML = realReviews.map(r => card(r, false)).join('') + realReviews.map(r => card(r, true)).join('');
+  tickerTrack.style.setProperty('--ticker-dur', `${Math.max(realReviews.length, 3) * 9}s`);
   const ticker = $('[data-ticker]');
   const setupMore = () => {
     $$('.review', tickerTrack).forEach(rv => {
@@ -235,6 +237,34 @@
   });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(setupMore); else setupMore();
   window.addEventListener('resize', setupMore);
+
+  /* ---------- Doctify widget (official script, loads when the section nears view) ---------- */
+  const doctify = $('[data-doctify]');
+  if (doctify) {
+    const loadDoctify = () => {
+      const sc = document.createElement('script');
+      sc.src = 'https://www.doctify.com/get-script?widget_container_id=0wqq6urx&type=carousel-widget&tenant=athena-uk&language=en&profileType=specialist&layoutType=layoutA&slugs=manaf-khatib&background=white&itemBackground=ffffff&outerFrame=true&itemFrame=true';
+      sc.defer = true;
+      sc.onerror = () => { $('[data-doctify-fallback]').hidden = false; doctify.hidden = true; };
+      document.body.appendChild(sc);
+      setTimeout(() => { if (!doctify.children.length) { $('[data-doctify-fallback]').hidden = false; doctify.hidden = true; } }, 8000);
+    };
+    if ('IntersectionObserver' in window) {
+      const dio = new IntersectionObserver(en => { if (en[0].isIntersecting) { dio.disconnect(); loadDoctify(); } }, { rootMargin: '600px' });
+      dio.observe(doctify);
+    } else loadDoctify();
+  }
+
+  /* ---------- video testimonial ---------- */
+  $$('[data-video]').forEach(card => {
+    const v = $('video', card), btn = $('.video-play', card);
+    btn.addEventListener('click', () => {
+      v.controls = true; card.classList.add('is-playing');
+      const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+      v.focus();
+    });
+    v.addEventListener('ended', () => { card.classList.remove('is-playing'); v.controls = false; v.load(); });
+  });
 
   /* ---------- scar tabs ---------- */
   $$('[data-tabs]').forEach(box => {
